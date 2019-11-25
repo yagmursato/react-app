@@ -1,26 +1,70 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { Component } from "react";
+import CanvasJSReact from "./assets/canvasjs.react";
+import socketIOClient from "socket.io-client";
+import update from "react-addons-update";
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+var CanvasJSChart = CanvasJSReact.CanvasJSChart;
+
+class SplineChart extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      endpoint: "http://10.1.2.176:5555",
+      options: {
+        animationEnabled: true,
+        title: {
+          text: "Currency Rate for USD/TRY"
+        },
+        axisX: {
+          valueFormatString: "DD-MM"
+        },
+        axisY: {
+          title: "USD",
+          prefix: "$",
+          includeZero: false
+        },
+        data: [
+          {
+            yValueFormatString: "$#.####",
+            xValueFormatString: "DD-MMMM",
+            type: "spline",
+            dataPoints: []
+          }
+        ]
+      }
+    };
+  }
+  componentDidMount() {
+    const { endpoint } = this.state;
+    const socket = socketIOClient(endpoint);
+    console.log(`${endpoint} adresine bağlantı yapılıyor...`);
+
+    socket.on("output road", data => {
+      for (var i = 0; i < data.anadata.length; i++) {
+        console.log(data.anadata[i]);
+        var dt = new Date(data.anadata[i].x);
+        data.anadata[i].x = dt;
+      }
+      let options2 = update(this.state.options, {
+        data: {
+          [0]: {
+            dataPoints: {
+              $set: data.anadata
+            }
+          }
+        }
+      });
+      this.setState({ options: options2 });
+    });
+  }
+  render() {
+    console.log(this.state.options.data);
+    return (
+      <div>
+        <CanvasJSChart options={this.state.options} />
+      </div>
+    );
+  }
 }
 
-export default App;
+export default SplineChart;
